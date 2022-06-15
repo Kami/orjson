@@ -10,22 +10,32 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+        python: [
+          { version: '3.7', abi: 'cp37-cp37m' },
+          { version: '3.8', abi: 'cp38-cp38' },
+          { version: '3.9', abi: 'cp39-cp39' },
+          { version: '3.10', abi: 'cp310-cp310' },
+        ]
+        target: [x86_64, aarch64]
     steps:
     - uses: actions/checkout@v2
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
     - name: Build wheels
       uses: messense/maturin-action@v1
+      env:
+        PYO3_CROSS_LIB_DIR: /opt/python/${{ matrix.python.abi }}
       with:
-        container: quay.io/pypa/musllinux_1_1_x86_64:latest
+        container: quay.io/pypa/musllinux_1_1_${{ matrix.target }}:latest
         rust-toolchain: nightly-2022-06-01
-        target: x86_64-unknown-linux-musl
+        target: ${{ matrix.target }}-unknown-linux-musl
         manylinux: musllinux_1_1
-        args: --release --strip --out dist --no-sdist --cargo-extra-args="--features=unstable-simd" -i python${{ matrix.python-version }}
+        args: --release --strip --out dist --no-sdist --cargo-extra-args="--features=unstable-simd" -i python${{ matrix.python.version }}
     - name: Install built wheel
       uses: addnab/docker-run-action@v3
       with:
-        image: quay.io/pypa/musllinux_1_1_x86_64:latest
-        options: -v ${{ github.workspace }}:/io -w /io
+        image: quay.io/pypa/musllinux_1_1_${{ matrix.target }}:latest
+        options: -v ${{ github.workspace }}:/io -w /io ${{ matrix.target == 'aarch64' && '--platform linux/arm64/v8' || ' ' }}
         run: |
           # workaround zoneinfo._common.ZoneInfoNotFoundError: 'No time zone found with key UTC'
           # exception when running tests
@@ -34,7 +44,7 @@ jobs:
           # Don't install numpy since there are no musllinux wheels
           sed -i '/^numpy/d' test/requirements.txt
 
-          PYTHON=python${{ matrix.python-version }}
+          PYTHON=python${{ matrix.python.version }}
           $PYTHON -m venv venv
           venv/bin/pip install -U pip
           venv/bin/pip install -r test/requirements.txt
