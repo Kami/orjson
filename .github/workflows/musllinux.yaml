@@ -31,7 +31,7 @@ jobs:
       uses: messense/maturin-action@v1
       env:
         PYO3_CROSS_LIB_DIR: /opt/python/${{ matrix.python.abi }}
-        RUST_BACKTRACE: 1
+        RUST_BACKTRACE: full
       with:
         rust-toolchain: nightly-2022-06-01
         target: ${{ matrix.platform.target }}
