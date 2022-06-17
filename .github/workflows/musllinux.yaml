@@ -31,6 +31,15 @@ jobs:
       with:
         python-version: ${{ matrix.python.version }}
 
+    - run: |
+        echo contents of
+        pwd
+        ls -l
+        echo contents of dist
+        ls -l dist/ || true
+        echo contents of target
+        ls -l target || true
+
     - name: Build wheels
       uses: messense/maturin-action@v1
       env:
@@ -39,7 +48,7 @@ jobs:
       with:
         rust-toolchain: nightly-2022-06-01
         target: ${{ matrix.platform.target }}
-        manylinux: musllinux_1_2
+        manylinux: musllinux_1_1
         args: --release --strip --out dist --no-sdist --cargo-extra-args="--features=unstable-simd" -i python${{ matrix.python.version }}
 
     - name: Upload crash report
@@ -48,6 +57,15 @@ jobs:
       with:
         name: crash-report
         path: /tmp/report-*.toml
+
+    - run: |
+        echo contents of
+        pwd
+        ls -l
+        echo contents of dist
+        ls -l dist/ || true
+        echo contents of target
+        ls -l target || true
 
 
     # - name: Install built wheel
@@ -62,11 +80,18 @@ jobs:
     #       pip3 install rjmespath --no-index --find-links /io/dist/ --force-reinstall
     #       cd tests && python3 -m pytest
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+      with:
+        image: tonistiigi/binfmt:qemu-v6.2.0
+        platforms: all
+
     - name: Install built wheel
-      if: matrix.platform.arch == 'x86_64'
+      # if: matrix.platform.arch == 'x86_64'
       uses: addnab/docker-run-action@v3
       with:
-        image: quay.io/pypa/musllinux_1_1_x86_64:latest
+        # image: quay.io/pypa/musllinux_1_1_x86_64:latest
+        image: quay.io/pypa/musllinux_1_1_${{ matrix.platform.arch }}:latest
         options: -v ${{ github.workspace }}:/io -w /io
         run: |
           # workaround zoneinfo._common.ZoneInfoNotFoundError: 'No time zone found with key UTC'
@@ -80,7 +105,9 @@ jobs:
           $PYTHON -m venv venv
           venv/bin/pip install -U pip
           venv/bin/pip install -r test/requirements.txt
+          ls -l dist/
           venv/bin/pip install orjson --no-index --find-links dist/ --force-reinstall
+          ls -l dist/
           venv/bin/python -m pytest -s -rxX -v test
 
 
@@ -97,11 +124,11 @@ jobs:
     #       pip3 install rjmespath --no-index --find-links dist/ --force-reinstall
     #       cd tests && python3 -m pytest
 
-    # - name: Upload wheels
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: wheels
-    #     path: dist
+    - name: Upload wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: dist
 
   release:
     name: Release
