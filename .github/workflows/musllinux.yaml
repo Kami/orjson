@@ -17,26 +17,45 @@ jobs:
           { version: '3.9', abi: 'cp39-cp39' },
           { version: '3.10', abi: 'cp310-cp310' },
         ]
-        target: [x86_64, aarch64]
+        platform:
+          - target: aarch64-unknown-linux-musl
+            arch: aarch64
+          - target: armv7-unknown-linux-musleabihf
+            arch: armv7
+          - target: x86_64-unknown-linux-musl
+            arch: x86_64
     steps:
     - uses: actions/checkout@v2
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+
     - name: Build wheels
       uses: messense/maturin-action@v1
       env:
         PYO3_CROSS_LIB_DIR: /opt/python/${{ matrix.python.abi }}
       with:
-        container: quay.io/pypa/musllinux_1_1_${{ matrix.target }}:latest
         rust-toolchain: nightly-2022-06-01
-        target: ${{ matrix.target }}-unknown-linux-musl
-        manylinux: musllinux_1_1
+        target: ${{ matrix.platform.target }}
+        manylinux: musllinux_1_2
         args: --release --strip --out dist --no-sdist --cargo-extra-args="--features=unstable-simd" -i python${{ matrix.python.version }}
+
+
+    # - name: Install built wheel
+    #   if: matrix.platform.arch == 'x86_64'
+    #   uses: addnab/docker-run-action@v3
+    #   with:
+    #     image: alpine:latest
+    #     options: -v ${{ github.workspace }}:/io -w /io
+    #     run: |
+    #       apk add py3-pip
+    #       pip3 install -U pip pytest
+    #       pip3 install rjmespath --no-index --find-links /io/dist/ --force-reinstall
+    #       cd tests && python3 -m pytest
+
     - name: Install built wheel
+      if: matrix.platform.arch == 'x86_64'
       uses: addnab/docker-run-action@v3
       with:
-        image: quay.io/pypa/musllinux_1_1_${{ matrix.target }}:latest
-        options: -v ${{ github.workspace }}:/io -w /io ${{ matrix.target == 'aarch64' && '--platform linux/arm64/v8' || ' ' }}
+        image: quay.io/pypa/musllinux_1_2_x86_64:latest
+        options: -v ${{ github.workspace }}:/io -w /io
         run: |
           # workaround zoneinfo._common.ZoneInfoNotFoundError: 'No time zone found with key UTC'
           # exception when running tests
@@ -51,11 +70,26 @@ jobs:
           venv/bin/pip install -r test/requirements.txt
           venv/bin/pip install orjson --no-index --find-links dist/ --force-reinstall
           venv/bin/python -m pytest -s -rxX -v test
-    - name: Upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: wheels
-        path: dist
+
+
+    # - uses: uraimo/run-on-arch-action@master
+    #   name: Install built wheel
+    #   with:
+    #     arch: ${{ matrix.platform.arch }}
+    #     distro: alpine_latest
+    #     githubToken: ${{ github.token }}
+    #     install: |
+    #       apk add py3-pip
+    #       pip3 install -U pip pytest
+    #     run: |
+    #       pip3 install rjmespath --no-index --find-links dist/ --force-reinstall
+    #       cd tests && python3 -m pytest
+
+    # - name: Upload wheels
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: wheels
+    #     path: dist
 
   release:
     name: Release
