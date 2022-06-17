@@ -12,10 +12,10 @@ jobs:
       fail-fast: false
       matrix:
         python: [
-          # { version: '3.7', abi: 'cp37-cp37m' },
+          { version: '3.7', abi: 'cp37-cp37m' },
           { version: '3.8', abi: 'cp38-cp38' },
-          # { version: '3.9', abi: 'cp39-cp39' },
-          # { version: '3.10', abi: 'cp310-cp310' },
+          { version: '3.9', abi: 'cp39-cp39' },
+          { version: '3.10', abi: 'cp310-cp310' },
         ]
         platform:
           - target: aarch64-unknown-linux-musl
@@ -26,6 +26,10 @@ jobs:
             arch: x86_64
     steps:
     - uses: actions/checkout@v2
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python.version }}
 
     - name: Build wheels
       uses: messense/maturin-action@v1
@@ -62,7 +66,7 @@ jobs:
       if: matrix.platform.arch == 'x86_64'
       uses: addnab/docker-run-action@v3
       with:
-        image: quay.io/pypa/musllinux_1_2_x86_64:latest
+        image: quay.io/pypa/musllinux_1_1_x86_64:latest
         options: -v ${{ github.workspace }}:/io -w /io
         run: |
           # workaround zoneinfo._common.ZoneInfoNotFoundError: 'No time zone found with key UTC'
