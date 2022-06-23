@@ -18,8 +18,10 @@ jobs:
           { version: '3.10' },
         ]
         platform:
-          - target: aarch64-unknown-linux-musl
-            arch: aarch64
+          - target: armv7-unknown-linux-musleabihf
+            arch: armv7
+          - target: x86_64-unknown-linux-musl
+            arch: x86_64
           - target: x86_64-unknown-linux-musl
             arch: x86_64
     steps:
