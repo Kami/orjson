@@ -12,10 +12,11 @@ jobs:
       fail-fast: false
       matrix:
         python: [
-          { version: '3.7' },
-          { version: '3.8' },
-          { version: '3.9' },
-          { version: '3.10' },
+         #{ version: '3.7' },
+         #{ version: '3.8' },
+         #{ version: '3.9' },
+         #{ version: '3.10' },
+          { version: '3.11' },
         ]
         platform:
           - target: aarch64-unknown-linux-musl
@@ -35,12 +36,18 @@ jobs:
         LDFLAGS: "-O2 -flto -Wl,--as-needed"
         CARGO_UNSTABLE_SPARSE_REGISTRY: "true"
       with:
-        maturin-version: v0.14.8
-        rust-toolchain: nightly-2023-01-03
+        maturin-version: v0.14.12
+        rust-toolchain: nightly-2023-01-30
         rustup-components: rust-src
         target: ${{ matrix.platform.target }}
         manylinux: musllinux_1_1
+        #args: --release --strip --out dist -i python${{ matrix.python.version }}
         args: --release --strip --out dist --features=unstable-simd,yyjson -i python${{ matrix.python.version }} -Z build-std=std,panic_abort -Z build-std-features=panic_immediate_abort
+    - name: Environment Info
+      run: |
+        ls -la /usr/local/musl/x86_64-unknown-linux-musl/lib/libgcc_s.so.1 || true
+        readelf -d dist/orjson-3.8.5-cp311-cp311-musllinux_1_1_x86_64.whl || true
+        readelf -d dist/orjson-3.8.5-cp311-cp311-musllinux_1_1_aarch64.whl || true
     - name: Set up QEMU
       if: matrix.platform.arch != 'x86_64'
       uses: docker/setup-qemu-action@v2
